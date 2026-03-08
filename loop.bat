@@ -22,16 +22,6 @@ if %errorlevel% equ 0 (
 )
 
 echo ------------------------------------------
-
-tasklist | find /i "sing-box.exe" >nul
-if %errorlevel% equ 0 (
-    echo [OK] sing-box VPN Active.
-) else (
-    echo [WARN] sing-box mati, restart...
-    schtasks /run /tn "singbox" >nul 2>&1
-)
-
-echo ------------------------------------------
 echo Loop setiap 5 menit. Cancel workflow untuk stop.
 echo ------------------------------------------
 
