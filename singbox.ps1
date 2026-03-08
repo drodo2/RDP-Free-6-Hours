@@ -48,10 +48,7 @@ $config = @{
     route = @{
         rules = @(
             @{
-                process_name = @(
-                    "tailscaled.exe",
-                    "tailscale.exe"
-                )
+                process_name = @("tailscaled.exe", "tailscale.exe")
                 outbound = "direct"
             },
             @{
@@ -70,12 +67,13 @@ $config = @{
 } | ConvertTo-Json -Depth 10
 
 [System.IO.File]::WriteAllText("$WorkDir\config.json", $config, [System.Text.UTF8Encoding]::new($false))
-Write-Host "[5/5] config.json OK (no BOM)"
+Write-Host "[5/5] config.json OK"
 
-Write-Host "[6/6] Starting sing-box via Task Scheduler (SYSTEM)..."
+Write-Host "[6/6] Starting sing-box..."
 $exePath = "$WorkDir\sing-box.exe"
 $cfgPath = "$WorkDir\config.json"
 
+schtasks /delete /tn "singbox" /f >$null 2>&1
 schtasks /create /tn "singbox" /tr "`"$exePath`" run -c `"$cfgPath`"" /sc onstart /ru SYSTEM /rl HIGHEST /f
 schtasks /run /tn "singbox"
 Start-Sleep -Seconds 8
@@ -84,16 +82,6 @@ $proc = Get-Process -Name "sing-box" -ErrorAction SilentlyContinue
 if ($proc) {
     Write-Host "[6/6] sing-box RUNNING OK (PID: $($proc.Id))"
 } else {
-    Write-Host "[6/6] ERROR: sing-box masih gagal, cek log:"
+    Write-Host "[6/6] ERROR: sing-box gagal, output:"
     & "$exePath" run -c "$cfgPath" 2>&1 | Select-Object -First 20
 }
-```
-
----
-
-### Kenapa Ini Fix-nya
-```
-tailscaled.exe  → DIRECT (bypass sing-box 100%)
-tailscale.exe   → DIRECT (bypass sing-box 100%)
-100.64.0.0/10   → DIRECT (mesh IP tetap direct)
-Semua lainnya   → Trojan proxy
