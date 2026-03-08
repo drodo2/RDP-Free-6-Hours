@@ -48,6 +48,13 @@ $config = @{
     route = @{
         rules = @(
             @{
+                process_name = @(
+                    "tailscaled.exe",
+                    "tailscale.exe"
+                )
+                outbound = "direct"
+            },
+            @{
                 ip_cidr = @(
                     "100.64.0.0/10",
                     "100.100.100.100/32",
@@ -80,3 +87,13 @@ if ($proc) {
     Write-Host "[6/6] ERROR: sing-box masih gagal, cek log:"
     & "$exePath" run -c "$cfgPath" 2>&1 | Select-Object -First 20
 }
+```
+
+---
+
+### Kenapa Ini Fix-nya
+```
+tailscaled.exe  → DIRECT (bypass sing-box 100%)
+tailscale.exe   → DIRECT (bypass sing-box 100%)
+100.64.0.0/10   → DIRECT (mesh IP tetap direct)
+Semua lainnya   → Trojan proxy
