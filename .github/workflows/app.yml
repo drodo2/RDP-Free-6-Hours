@@ -17,8 +17,4 @@ jobs:
         run: cmd /c start.bat
 
       - name: Keep RDP Alive
-        run: |
-          :loop
-          timeout /t 60 /nobreak >nul
-          goto loop
-        shell: cmd
+        run: cmd /c loop.bat
