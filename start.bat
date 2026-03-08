@@ -1,5 +1,5 @@
 @echo off
-title RDP Ery-Leonardo - Tailscale + WARP (Final Fixed)
+title RDP Ery-Leonardo - Tailscale + sing-box Trojan (Final)
 
 :: ============================================================
 :: [1/5] USER ACCOUNT + RDP
@@ -32,7 +32,6 @@ curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscal
 echo 🔧 Installing Tailscale...
 start /wait tailscale-setup.exe /quiet
 
-:: Anti-401: rebut kontrol dari runneradmin
 taskkill /f /im tailscaled.exe /t >nul 2>&1
 sc stop tailscale >nul 2>&1
 timeout /t 3 /nobreak >nul
@@ -48,39 +47,71 @@ echo 🔗 Connecting Tailscale...
 echo    ✅ Tailscale connected.
 
 :: ============================================================
-:: [4/5] CLOUDFLARE WARP
+:: [4/5] SING-BOX (Trojan VPN)
 :: ============================================================
-echo ⏬ [4/5] Downloading Cloudflare WARP (MSI)...
-curl -L https://1111-releases.cloudflareclient.com/win/Cloudflare_WARP_2023.7.160.0.msi -o warp.msi >nul
-echo 🔧 Installing WARP...
-start /wait msiexec /i warp.msi /quiet /norestart
-timeout /t 15 /nobreak >nul
+echo ⏬ [4/5] Downloading sing-box...
+curl -L https://github.com/SagerNet/sing-box/releases/download/v1.8.0/sing-box-1.8.0-windows-amd64.zip -o sing-box.zip >nul
+tar -xf sing-box.zip >nul 2>&1
+move sing-box-1.8.0-windows-amd64\sing-box.exe sing-box.exe >nul
 
-set WARP="C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe"
+:: Buat config sing-box
+echo 🔧 Writing sing-box config...
+echo {> config.json
+echo   "log": { "level": "warn" },>> config.json
+echo   "inbounds": [>> config.json
+echo     {>> config.json
+echo       "type": "tun",>> config.json
+echo       "tag": "tun-in",>> config.json
+echo       "inet4_address": "172.19.0.1/30",>> config.json
+echo       "auto_route": true,>> config.json
+echo       "strict_route": false,>> config.json
+echo       "stack": "system">> config.json
+echo     }>> config.json
+echo   ],>> config.json
+echo   "outbounds": [>> config.json
+echo     {>> config.json
+echo       "type": "trojan",>> config.json
+echo       "tag": "proxy",>> config.json
+echo       "server": "sg6.servercepat.net",>> config.json
+echo       "server_port": 443,>> config.json
+echo       "password": "g4BYVqC5Xn9zvqs",>> config.json
+echo       "tls": {>> config.json
+echo         "enabled": true,>> config.json
+echo         "insecure": true,>> config.json
+echo         "server_name": "sg6.servercepat.net",>> config.json
+echo         "alpn": ["http/1.1"],>> config.json
+echo         "utls": { "enabled": true, "fingerprint": "chrome" }>> config.json
+echo       },>> config.json
+echo       "transport": {>> config.json
+echo         "type": "ws",>> config.json
+echo         "path": "/trojan-ws",>> config.json
+echo         "headers": { "Host": "sg6.servercepat.net" }>> config.json
+echo       }>> config.json
+echo     },>> config.json
+echo     { "type": "direct", "tag": "direct" }>> config.json
+echo   ],>> config.json
+echo   "route": {>> config.json
+echo     "rules": [>> config.json
+echo       {>> config.json
+echo         "ip_cidr": [>> config.json
+echo           "100.64.0.0/10",>> config.json
+echo           "100.100.100.100/32",>> config.json
+echo           "192.168.0.0/16",>> config.json
+echo           "10.0.0.0/8",>> config.json
+echo           "127.0.0.0/8">> config.json
+echo         ],>> config.json
+echo         "outbound": "direct">> config.json
+echo       }>> config.json
+echo     ],>> config.json
+echo     "final": "proxy">> config.json
+echo   }>> config.json
+echo }>> config.json
 
-:: Register WARP
-echo 🔧 Registering WARP...
-%WARP% register new
-timeout /t 10 /nobreak >nul
-
-:: Split Tunnel — Tailscale bypass WARP
-echo 🔧 Setting Split Tunnel...
-%WARP% add-excluded-route 100.64.0.0/10
-%WARP% add-excluded-route 100.100.100.100/32
-%WARP% add-excluded-route 127.0.0.0/8
-%WARP% add-excluded-route 192.168.0.0/16
-%WARP% add-excluded-route 10.0.0.0/8
-echo    ✅ Split tunnel selesai.
-
-:: Konek WARP
-echo 🔗 Connecting WARP...
-%WARP% connect
-timeout /t 10 /nobreak >nul
-
-:: Verifikasi status
-echo 📊 Status WARP:
-%WARP% status
-echo    ✅ WARP connected.
+:: Jalankan sing-box sebagai background
+echo 🚀 Starting sing-box...
+start /b sing-box.exe run -c config.json
+timeout /t 5 /nobreak >nul
+echo    ✅ sing-box running.
 
 :: ============================================================
 :: [5/5] STATUS AKHIR
@@ -92,8 +123,17 @@ echo.
 echo    👤 Username  : rdpuser
 echo    🔑 Password  : %RDP_PASSWORD%
 echo    🔵 Tailscale : AKTIF  ^(routing via 100.x.x.x^)
-echo    🟠 WARP      : AKTIF  ^(bypass Tailscale otomatis^)
+echo    🟢 sing-box  : AKTIF  ^(Trojan WS TLS - sg6.servercepat.net^)
 echo    🖥️  RDP       : AKTIF
 echo.
 echo    👉 CEK LINK LOGIN TAILSCALE DI LOG GITHUB SEKARANG.
 echo ============================================================
+```
+
+---
+
+### Cara Kerjanya
+```
+Traffic internet  → sing-box TUN → Trojan WS → sg6.servercepat.net
+Tailscale 100.x   → DIRECT (bypass sing-box)
+RDP / LAN         → DIRECT (bypass sing-box)
