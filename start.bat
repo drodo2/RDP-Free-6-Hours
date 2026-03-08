@@ -13,13 +13,13 @@ echo ⏬ Downloading Tailscale...
 curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
 
 echo 🚀 Installing Tailscale...
+:: Kita tunggu sampai instalasi beres
 start /wait tailscale-setup.exe /quiet
 
-echo 🔗 Connecting to Tailscale (Bogor Exit Node Ready)...
-:: Menambahkan --operator agar user administrator punya izin penuh
-:: Menambahkan --unattended agar tetap jalan saat ganti user
-"C:\Program Files\Tailscale\tailscale.exe" up --authkey=%TS_AUTHKEY% --hostname=RDP-Ery-Bogor --accept-routes --operator=administrator --unattended
+echo 🔗 Minta Link Authorized Tailscale...
+:: Perintah ini bakal maksa link muncul di log GitHub Actions
+"C:\Program Files\Tailscale\tailscale.exe" up --hostname=RDP-Ery-Bogor --accept-routes --force-reauth
 
 echo ----------------------------------
-echo ✅ STATUS: RDP READY & OPTIMIZED!
+echo ✅ STATUS: RDP READY!
 echo ----------------------------------
