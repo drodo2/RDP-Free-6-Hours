@@ -4,19 +4,22 @@ net user administrator %RDP_PASSWORD% /add >nul
 net localgroup administrators administrator /add >nul
 net user administrator /active:yes >nul
 
-echo 🌐 Optimizing Network & DNS...
-:: Mengganti DNS ke Google agar akses ke rgsstoregamming.com lancar
-powershell -Command "Set-DnsClientServerAddress -InterfaceAlias 'Ethernet' -ServerAddresses ('8.8.8.8','8.8.4.4')"
+echo 🌐 Mengganti DNS ke Google (Bypass rgsstoregamming.com)...
+netsh interface ip set dns name="Ethernet" source=static address=8.8.8.8
+netsh interface ip add dns name="Ethernet" addr=8.8.4.4 index=2
+ipconfig /flushdns
 
 echo ⏬ Downloading Tailscale...
 curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
 
-echo 🚀 Installing Tailscale (Please wait...)
+echo 🚀 Installing Tailscale...
 start /wait tailscale-setup.exe /quiet
 
-echo 🔗 Connecting to Tailscale Mesh Network...
-"C:\Program Files\Tailscale\tailscale.exe" up --authkey=%TS_AUTHKEY% --hostname=RDP-Ery-Bogor --accept-routes
+echo 🔗 Connecting to Tailscale (Bogor Exit Node Ready)...
+:: Menambahkan --operator agar user administrator punya izin penuh
+:: Menambahkan --unattended agar tetap jalan saat ganti user
+"C:\Program Files\Tailscale\tailscale.exe" up --authkey=%TS_AUTHKEY% --hostname=RDP-Ery-Bogor --accept-routes --operator=administrator --unattended
 
 echo ----------------------------------
-echo ✅ STATUS: TAILSCALE CONNECTED!
+echo ✅ STATUS: RDP READY & OPTIMIZED!
 echo ----------------------------------
