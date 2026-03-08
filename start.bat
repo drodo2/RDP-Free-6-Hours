@@ -1,42 +1,58 @@
 @echo off
-title RDP Ery-Leonardo - Tailscale + Cloudflare WARP
+title RDP Ery-Leonardo - Tailscale Only (Fixed)
 
 :: ============================================================
-:: [1/5] USER ACCOUNT + RDP
+:: [DIAGNOSA] Cek identitas runner
 :: ============================================================
-echo 🛠️  [1/5] Setting up User Account and RDP...
-net user administrator %RDP_PASSWORD%
-net user administrator /active:yes
-net localgroup administrators administrator /add >nul 2>&1
+echo 🔍 [DIAGNOSA] Username aktif:
+whoami
+echo.
+echo 🔍 Semua user tersedia:
+net user
+echo.
 
-:: Aktifkan RDP
+:: ============================================================
+:: [1/4] USER ACCOUNT + RDP
+:: ============================================================
+echo 🛠️  [1/4] Setting up User Account...
+
+:: Buat user baru "rdpuser" (lebih aman dari pakai administrator)
+net user rdpuser %RDP_PASSWORD% /add
+net localgroup administrators rdpuser /add
+net user rdpuser /active:yes
+
+:: Nonaktifkan NLA (wajib!)
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f >nul
+
+:: Buka firewall RDP
 netsh advfirewall firewall set rule group="remote desktop" new enable=Yes >nul
-echo    ✅ RDP aktif.
+netsh advfirewall firewall add rule name="RDP-TCP-3389" protocol=TCP dir=in localport=3389 action=allow >nul
+echo    ✅ RDP aktif. Login: rdpuser / %RDP_PASSWORD%
 
 :: ============================================================
-:: [2/5] DNS
+:: [2/4] DNS
 :: ============================================================
-echo 🌐 [2/5] Optimizing DNS (Google)...
+echo 🌐 [2/4] Optimizing DNS...
 netsh interface ip set dns name="Ethernet" source=static address=8.8.8.8 >nul
 netsh interface ip add dns name="Ethernet" addr=8.8.4.4 index=2 >nul
 ipconfig /flushdns >nul
 echo    ✅ DNS selesai.
 
 :: ============================================================
-:: [3/5] TAILSCALE (harus duluan sebelum WARP)
+:: [3/4] TAILSCALE
 :: ============================================================
-echo ⏬ [3/5] Downloading and Installing Tailscale...
+echo ⏬ [3/4] Downloading Tailscale...
 curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
 start /wait tailscale-setup.exe /quiet
 
-:: Anti-401: rebut kontrol dari runneradmin
+:: Fix anti-401 tanpa /y
 taskkill /f /im tailscaled.exe /t >nul 2>&1
-net stop tailscale /y >nul 2>&1
-net start tailscale
+sc stop tailscale >nul 2>&1
+timeout /t 3 /nobreak >nul
+sc start tailscale >nul 2>&1
 timeout /t 5 /nobreak >nul
 
-:: Konek Tailscale
 echo 🔗 Connecting Tailscale...
 "C:\Program Files\Tailscale\tailscale.exe" up ^
     --hostname=RDP-Ery-Bogor ^
@@ -46,47 +62,15 @@ echo 🔗 Connecting Tailscale...
 echo    ✅ Tailscale connected.
 
 :: ============================================================
-:: [4/5] CLOUDFLARE WARP
-:: ============================================================
-echo ⏬ [4/5] Downloading and Installing Cloudflare WARP...
-curl -L https://1111-releases.cloudflareclient.com/win/latest -o warp-setup.exe >nul
-start /wait warp-setup.exe /quiet
-timeout /t 10 /nobreak >nul
-
-set WARP="C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe"
-
-:: Register WARP (tanpa akun = mode consumer biasa)
-echo 🔧 Configuring Cloudflare WARP...
-%WARP% registration new >nul 2>&1
-timeout /t 5 /nobreak >nul
-
-:: ============================================================
-:: KUNCI UTAMA: Split Tunnel — Tailscale BYPASS WARP
-:: ============================================================
-:: Exclude range IP Tailscale (CGNAT 100.64.0.0/10)
-%WARP% tunnel exclude 100.64.0.0/10 >nul
-:: Exclude MagicDNS Tailscale
-%WARP% tunnel exclude 100.100.100.100/32 >nul
-:: Exclude loopback & LAN supaya RDP tidak terganggu
-%WARP% tunnel exclude 127.0.0.0/8 >nul
-%WARP% tunnel exclude 192.168.0.0/16 >nul
-%WARP% tunnel exclude 10.0.0.0/8 >nul
-
-:: Konek WARP
-%WARP% connect
-timeout /t 8 /nobreak >nul
-echo    ✅ WARP connected.
-
-:: ============================================================
-:: [5/5] STATUS AKHIR
+:: [4/4] STATUS
 :: ============================================================
 echo.
 echo ============================================================
 echo ✅ STATUS: RDP READY!
 echo.
-echo    🔵 Tailscale : AKTIF  (routing via 100.64.x.x)
-echo    🟠 WARP      : AKTIF  (bypass Tailscale otomatis)
-echo    🖥️  RDP       : AKTIF
+echo    👤 Username : rdpuser
+echo    🔑 Password : %RDP_PASSWORD%
+echo    🖥️  RDP      : Pakai IP Tailscale (100.x.x.x)
 echo.
 echo    👉 CEK LINK LOGIN TAILSCALE DI LOG GITHUB SEKARANG.
 echo ============================================================
