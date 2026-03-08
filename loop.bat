@@ -3,13 +3,11 @@ cls
 echo ==========================================
 echo    RDP TAILSCALE IS RUNNING!
 echo ==========================================
-
 :check
 cls
 echo ==========================================
 echo    RDP TAILSCALE STATUS: ACTIVE
 echo ==========================================
-
 tasklist | find /i "tailscaled.exe" >nul
 if %errorlevel% equ 0 (
     echo [OK] Tailscale Active.
@@ -20,20 +18,16 @@ if %errorlevel% equ 0 (
     echo [ERROR] Tailscale disconnected!
     exit /b 1
 )
-
 echo ------------------------------------------
-
 tasklist | find /i "sing-box.exe" >nul
 if %errorlevel% equ 0 (
-    echo [OK] sing-box VPN Active - SOCKS5 127.0.0.1:2080
+    echo [OK] sing-box VPN Active.
 ) else (
-    echo [WARN] sing-box mati, restart...
-    powershell -Command "Start-Process -FilePath 'D:\a\RDP-Free-6-Hours\RDP-Free-6-Hours\sing-box.exe' -ArgumentList 'run','-c','D:\a\RDP-Free-6-Hours\RDP-Free-6-Hours\config.json' -WindowStyle Hidden"
+    echo [WARN] sing-box mati, restart via schtasks...
+    schtasks /run /tn "singbox" >nul 2>&1
 )
-
 echo ------------------------------------------
 echo Loop setiap 5 menit. Cancel workflow untuk stop.
 echo ------------------------------------------
-
-timeout /t 300
+powershell -Command "Start-Sleep 300"
 goto check
