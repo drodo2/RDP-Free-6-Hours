@@ -1,4 +1,4 @@
-name: Drodo RDP Tailscale
+name: Drodo
 on: workflow_dispatch
 
 jobs:
@@ -7,26 +7,19 @@ jobs:
     timeout-minutes: 9999
     
     steps:
-    # 1. Mengambil file dari repo kamu (start.bat, loop.bat, dll)
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 2. Pengaturan Windows RDP agar bisa diakses
     - name: Configure Windows RDP
       run: |
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        # Memastikan wallpaper.bat ada di lokasi yang benar
-        if (Test-Path "wallpaper.bat") { copy wallpaper.bat D:\a\wallpaper.bat }
 
-    # 3. Menjalankan start.bat (Isinya instalasi Tailscale)
     - name: Install & Connect Tailscale
       run: cmd /c start.bat
       env:
-        # Masukkan Auth Key di GitHub Secrets dengan nama TS_AUTHKEY
         TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
-    # 4. Menjalankan loop.bat agar Runner tidak mati
     - name: Keep RDP Alive
-      run: cmd /c loop.bat
+      run: cmd /c loop.bat
