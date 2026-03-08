@@ -30,59 +30,61 @@ tar -xf sing-box.zip >nul 2>&1
 move sing-box-1.8.0-windows-amd64\sing-box.exe sing-box.exe >nul
 echo [4/5] sing-box downloaded
 
-(
-echo {
-echo   "log": { "level": "warn" },
-echo   "inbounds": [{
-echo     "type": "tun",
-echo     "tag": "tun-in",
-echo     "inet4_address": "172.19.0.1/30",
-echo     "auto_route": true,
-echo     "strict_route": false,
-echo     "stack": "system"
-echo   }],
-echo   "outbounds": [
-echo     {
-echo       "type": "trojan",
-echo       "tag": "proxy",
-echo       "server": "sg6.servercepat.net",
-echo       "server_port": 443,
-echo       "password": "g4BYVqC5Xn9zvqs",
-echo       "tls": {
-echo         "enabled": true,
-echo         "insecure": true,
-echo         "server_name": "sg6.servercepat.net",
-echo         "alpn": ["http/1.1"],
-echo         "utls": { "enabled": true, "fingerprint": "chrome" }
-echo       },
-echo       "transport": {
-echo         "type": "ws",
-echo         "path": "/trojan-ws",
-echo         "headers": { "Host": "sg6.servercepat.net" }
-echo       }
-echo     },
-echo     { "type": "direct", "tag": "direct" }
-echo   ],
-echo   "route": {
-echo     "rules": [{
-echo       "ip_cidr": [
-echo         "100.64.0.0/10",
-echo         "100.100.100.100/32",
-echo         "192.168.0.0/16",
-echo         "10.0.0.0/8",
-echo         "127.0.0.0/8"
-echo       ],
-echo       "outbound": "direct"
-echo     }],
-echo     "final": "proxy"
-echo   }
-echo }
-) > config.json
+powershell -Command "$json = @'
+{
+  \"log\": { \"level\": \"warn\" },
+  \"inbounds\": [{
+    \"type\": \"tun\",
+    \"tag\": \"tun-in\",
+    \"inet4_address\": \"172.19.0.1/30\",
+    \"auto_route\": true,
+    \"strict_route\": false,
+    \"stack\": \"system\"
+  }],
+  \"outbounds\": [
+    {
+      \"type\": \"trojan\",
+      \"tag\": \"proxy\",
+      \"server\": \"sg6.servercepat.net\",
+      \"server_port\": 443,
+      \"password\": \"g4BYVqC5Xn9zvqs\",
+      \"tls\": {
+        \"enabled\": true,
+        \"insecure\": true,
+        \"server_name\": \"sg6.servercepat.net\",
+        \"alpn\": [\"http/1.1\"],
+        \"utls\": { \"enabled\": true, \"fingerprint\": \"chrome\" }
+      },
+      \"transport\": {
+        \"type\": \"ws\",
+        \"path\": \"/trojan-ws\",
+        \"headers\": { \"Host\": \"sg6.servercepat.net\" }
+      }
+    },
+    { \"type\": \"direct\", \"tag\": \"direct\" }
+  ],
+  \"route\": {
+    \"rules\": [{
+      \"ip_cidr\": [
+        \"100.64.0.0/10\",
+        \"100.100.100.100/32\",
+        \"192.168.0.0/16\",
+        \"10.0.0.0/8\",
+        \"127.0.0.0/8\"
+      ],
+      \"outbound\": \"direct\"
+    }],
+    \"final\": \"proxy\"
+  }
+}
+'@; $json | Set-Content -Path 'config.json' -Encoding UTF8"
+
+echo [5/5] Config JSON OK
 
 schtasks /create /tn "singbox" /tr "%CD%\sing-box.exe run -c %CD%\config.json" /sc onstart /ru SYSTEM /f >nul
 schtasks /run /tn "singbox" >nul
 timeout /t 5 /nobreak >nul
-echo [5/5] sing-box started via Task Scheduler
+echo [6/6] sing-box started
 
 echo ============================================================
 echo RDP READY!
