@@ -18,15 +18,3 @@ jobs:
 
       - name: Keep RDP Alive
         run: cmd /c loop.bat
-```
-
----
-
-### Struktur File di Repo
-```
-.github/
-  workflows/
-    drodo.yml
-start.bat
-singbox.ps1
-loop.bat
