@@ -62,8 +62,8 @@ $config = @{
     }
 } | ConvertTo-Json -Depth 10
 
-$config | Set-Content -Path "$WorkDir\config.json" -Encoding UTF8
-Write-Host "[5/5] config.json OK"
+[System.IO.File]::WriteAllText("$WorkDir\config.json", $config, [System.Text.UTF8Encoding]::new($false))
+Write-Host "[5/5] config.json OK (no BOM)"
 
 Write-Host "[6/6] Starting sing-box via Task Scheduler (SYSTEM)..."
 $exePath = "$WorkDir\sing-box.exe"
