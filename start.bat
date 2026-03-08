@@ -17,11 +17,15 @@ echo [2/4] DNS OK
 
 curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
 start /wait tailscale-setup.exe /quiet
+echo [+] Tailscale installed
+
 taskkill /f /im tailscaled.exe /t >nul 2>&1
-sc stop tailscale >nul 2>&1
-timeout /t 3 /nobreak >nul
-sc start tailscale >nul 2>&1
-timeout /t 5 /nobreak >nul
+powershell -Command "Stop-Service tailscale -Force -ErrorAction SilentlyContinue"
+powershell -Command "Start-Sleep 3"
+powershell -Command "Start-Service tailscale -ErrorAction SilentlyContinue"
+powershell -Command "Start-Sleep 5"
+echo [+] Tailscale service restarted
+
 "C:\Program Files\Tailscale\tailscale.exe" up --hostname=RDP-Ery-Bogor --accept-routes --force-reauth --unattended
 echo [3/4] Tailscale OK
 
@@ -33,6 +37,6 @@ echo RDP READY!
 echo Username : rdpuser
 echo Password : %RDP_PASSWORD%
 echo Tailscale: AKTIF
-echo sing-box : AKTIF - SOCKS5 di 127.0.0.1:2080
+echo sing-box : AKTIF
 echo CEK LINK LOGIN TAILSCALE DI LOG GITHUB SEKARANG.
 echo ============================================================
