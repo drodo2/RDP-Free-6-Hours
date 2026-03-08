@@ -11,7 +11,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Run RDP + Tailscale + sing-box
+      - name: Run RDP + Tailscale
         env:
           RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
         run: cmd /c start.bat
