@@ -1,21 +1,30 @@
 @echo off
-del /f "C:\Users\Public\Desktop\Epic Games Launcher.lnk" > out.txt 2>&1
-net config server /srvcomment:"Windows Server 2019 By Oshekher" > out.txt 2>&1
-REG ADD "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /V EnableAutoTray /T REG_DWORD /D 0 /F > out.txt 2>&1
-REG ADD "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /f /v Wallpaper /t REG_SZ /d D:\a\wallpaper.bat
+title Tailscale RDP Runner
+echo 🛠️ Setting up User Accounts...
 net user administrator @HarApito /add >nul
 net localgroup administrators administrator /add >nul
 net user administrator /active:yes >nul
-net user installer /delete
-diskperf -Y >nul
-sc config Audiosrv start= auto >nul
-sc start audiosrv >nul
-ICACLS C:\Windows\Temp /grant administrator:F >nul
-ICACLS C:\Windows\installer /grant administrator:F >nul
-echo Successfully Installed !, If the RDP is Dead, Please Rebuild Again!
-echo IP:
-tasklist | find /i "ngrok.exe" >Nul && curl -s localhost:4040/api/tunnels | jq -r .tunnels[0].public_url || echo "Tidak bisa mendapatkan NGROK tunnel, pastikan NGROK_AUTH_TOKEN benar di Settings> Secrets> Repository secret. Mungkin VM Anda sebelumnya masih berjalan: https://dashboard.ngrok.com/status/tunnels "
+net user installer /delete >nul
+
+echo ⏬ Downloading Tailscale...
+curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
+
+echo 🚀 Installing Tailscale (Please wait...)
+start /wait tailscale-setup.exe /quiet
+
+echo 🔗 Connecting to Tailscale Mesh Network...
+:: Menggunakan Auth Key yang kamu berikan
+"C:\Program Files\Tailscale\tailscale.exe" up --authkey=tskey-auth-kXk7us9Cx711CNTRL-uAjEChEYSsLWhjvoogbQsLnVknefJwPSA --hostname=RDP-Ery-Bogor --accept-routes
+
+echo ----------------------------------
+echo ✅ STATUS: TAILSCALE CONNECTED!
+echo 🖥️  RDP CONNECTION DETAILS
+echo ----------------------------------
 echo Username: administrator
 echo Password: @HarApito
-echo Silahkan Login Ke RDP Anda!!
-ping -n 10 127.0.0.1 >nul
+echo Computer Name: RDP-Ery-Bogor
+echo ----------------------------------
+echo ⚠️  Jangan tutup jendela ini agar koneksi tetap aktif.
+
+:: Mencegah Runner mati otomatis (Looping 6 Jam)
+timeout /t 21600 /nobreak >nul
