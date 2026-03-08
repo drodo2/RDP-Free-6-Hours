@@ -5,24 +5,38 @@ Invoke-WebRequest -Uri "https://github.com/SagerNet/sing-box/releases/download/v
 Expand-Archive -Path "sing-box.zip" -DestinationPath "sing-box-extracted" -Force
 Copy-Item "sing-box-extracted\sing-box-1.8.0-windows-amd64\sing-box.exe" ".\sing-box.exe" -Force
 Write-Host "[sing-box 1/3] Downloaded OK"
+
+Write-Host "[sing-box 2/3] Detecting Tailscale interface..."
+$tsInterface = Get-NetAdapter | Where-Object {
+    $_.Description -match "tailscale|tsun|wintun" -or
+    $_.Name -match "tailscale|tsun"
+} | Select-Object -First 1 -ExpandProperty Name
+
+if ($tsInterface) {
+    Write-Host "[sing-box 2/3] Tailscale interface ditemukan: $tsInterface"
+} else {
+    Write-Host "[sing-box 2/3] WARNING: Tailscale interface tidak ditemukan, pakai fallback IP rules"
+    $tsInterface = $null
+}
+
 Write-Host "[sing-box 2/3] Writing config.json..."
+
+$inbound = @{
+    type = "tun"
+    tag = "tun-in"
+    inet4_address = "172.19.0.1/30"
+    auto_route = $true
+    strict_route = $false
+    stack = "system"
+}
+
+if ($tsInterface) {
+    $inbound["exclude_interface"] = @($tsInterface)
+}
+
 $config = @{
     log = @{ level = "warn" }
-    inbounds = @(
-        @{
-            type = "tun"
-            tag = "tun-in"
-            inet4_address = "172.19.0.1/30"
-            auto_route = $true
-            strict_route = $false
-            stack = "system"
-            exclude_interface = @("Tailscale")
-            route_exclude_address = @(
-                "100.64.0.0/10",
-                "100.100.100.100/32"
-            )
-        }
-    )
+    inbounds = @($inbound)
     outbounds = @(
         @{
             type = "trojan"
@@ -61,8 +75,10 @@ $config = @{
         final = "proxy"
     }
 } | ConvertTo-Json -Depth 10
+
 [System.IO.File]::WriteAllText("$WorkDir\config.json", $config, [System.Text.UTF8Encoding]::new($false))
 Write-Host "[sing-box 2/3] config.json OK"
+
 Write-Host "[sing-box 3/3] Starting..."
 $exePath = "$WorkDir\sing-box.exe"
 $cfgPath = "$WorkDir\config.json"
@@ -77,3 +93,12 @@ if ($proc) {
     Write-Host "[sing-box 3/3] ERROR: gagal start, output:"
     & "$exePath" run -c "$cfgPath" 2>&1 | Select-Object -First 30
 }
+```
+
+---
+
+### Cara Kerjanya
+```
+Get-NetAdapter → cari adapter yang namanya/deskripsinya mengandung
+                 "tailscale", "tsun", atau "wintun"
+                 → dapat nama aslinya → masuk ke exclude_interface
