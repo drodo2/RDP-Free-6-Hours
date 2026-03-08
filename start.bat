@@ -1,25 +1,37 @@
 @echo off
-echo 🛠️ Setting up User Accounts...
+title RDP Ery-Leonardo - Optimized for RGSSTOREGAMMING
+echo 🛠️ [1/5] Setting up User Accounts...
 net user administrator %RDP_PASSWORD% /add >nul
 net localgroup administrators administrator /add >nul
 net user administrator /active:yes >nul
 
-echo 🌐 Mengganti DNS ke Google (Bypass rgsstoregamming.com)...
+echo 🌐 [2/5] Mengganti DNS ke Google & Cloudflare...
+:: Mengganti DNS Ethernet agar rgsstoregamming.com/json lancar
 netsh interface ip set dns name="Ethernet" source=static address=8.8.8.8
-netsh interface ip add dns name="Ethernet" addr=8.8.4.4 index=2
+netsh interface ip add dns name="Ethernet" addr=1.1.1.1 index=2
 ipconfig /flushdns
 
-echo ⏬ Downloading Tailscale...
+echo ⏬ [3/5] Downloading Tailscale...
 curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
 
-echo 🚀 Installing Tailscale...
-:: Kita tunggu sampai instalasi beres
+echo 🚀 [4/5] Installing Tailscale...
+:: Install secara silent dan tunggu sampai selesai
 start /wait tailscale-setup.exe /quiet
 
-echo 🔗 Minta Link Authorized Tailscale...
-:: Perintah ini bakal maksa link muncul di log GitHub Actions
-"C:\Program Files\Tailscale\tailscale.exe" up --hostname=RDP-Ery-Bogor --accept-routes --force-reauth
+echo 🛡️ [5/5] Fix Authority & Auth Link...
+:: Kita matikan dulu servis bawaan runneradmin biar gak 401 Unauthorized
+taskkill /f /im tailscaled.exe >nul 2>&1
+net stop tailscale >nul 2>&1
 
-echo ----------------------------------
-echo ✅ STATUS: RDP READY!
-echo ----------------------------------
+:: Nyalakan lagi servisnya agar siap menerima perintah dari user administrator
+net start tailscale
+
+:: Memunculkan Link Login di Log GitHub Actions
+echo ------------------------------------------------------------
+echo 👉 KLIK LINK DI BAWAH INI UNTUK AUTHORIZE TAILSCALE:
+echo ------------------------------------------------------------
+"C:\Program Files\Tailscale\tailscale.exe" up --hostname=RDP-Ery-Bogor --accept-routes --force-reauth --unattended
+echo ------------------------------------------------------------
+
+echo ✅ STATUS: SETUP SELESAI! Silahkan login RDP.
+echo 💡 Setelah login RDP, jalankan perintah Exit Node Bogor di CMD.
