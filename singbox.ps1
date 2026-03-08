@@ -40,15 +40,10 @@ $config = @{
             transport = @{
                 type = "ws"
                 path = "/trojan-ws"
-                headers = @{
-                    Host = "sg6.servercepat.net"
-                }
+                headers = @{ Host = "sg6.servercepat.net" }
             }
         },
-        @{
-            type = "direct"
-            tag = "direct"
-        }
+        @{ type = "direct"; tag = "direct" }
     )
     route = @{
         rules = @(
@@ -70,18 +65,18 @@ $config = @{
 $config | Set-Content -Path "$WorkDir\config.json" -Encoding UTF8
 Write-Host "[5/5] config.json OK"
 
-Write-Host "[6/6] Starting sing-box..."
-$proc = Start-Process `
-    -FilePath "$WorkDir\sing-box.exe" `
-    -ArgumentList "run", "-c", "$WorkDir\config.json" `
-    -WindowStyle Hidden `
-    -PassThru
+Write-Host "[6/6] Starting sing-box via Task Scheduler (SYSTEM)..."
+$exePath = "$WorkDir\sing-box.exe"
+$cfgPath = "$WorkDir\config.json"
 
-Start-Sleep -Seconds 5
+schtasks /create /tn "singbox" /tr "`"$exePath`" run -c `"$cfgPath`"" /sc onstart /ru SYSTEM /rl HIGHEST /f
+schtasks /run /tn "singbox"
+Start-Sleep -Seconds 8
 
-if (Get-Process -Name "sing-box" -ErrorAction SilentlyContinue) {
-    Write-Host "[6/6] sing-box RUNNING (PID: $($proc.Id))"
+$proc = Get-Process -Name "sing-box" -ErrorAction SilentlyContinue
+if ($proc) {
+    Write-Host "[6/6] sing-box RUNNING OK (PID: $($proc.Id))"
 } else {
-    Write-Host "[6/6] ERROR: sing-box gagal start!"
-    Write-Host "Coba jalankan manual: $WorkDir\sing-box.exe run -c $WorkDir\config.json"
+    Write-Host "[6/6] ERROR: sing-box masih gagal, cek log:"
+    & "$exePath" run -c "$cfgPath" 2>&1 | Select-Object -First 20
 }
