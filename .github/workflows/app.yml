@@ -20,6 +20,8 @@ jobs:
       run: cmd /c start.bat
       env:
         TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
+        # Tambahkan baris di bawah ini:
+        RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
 
     - name: Keep RDP Alive
       run: cmd /c loop.bat
