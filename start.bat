@@ -1,5 +1,5 @@
 @echo off
-title RDP Ery-Leonardo - Tailscale + WARP (Final)
+title RDP Ery-Leonardo - Tailscale + WARP (Final Fixed)
 
 :: ============================================================
 :: [1/5] USER ACCOUNT + RDP
@@ -25,12 +25,14 @@ ipconfig /flushdns >nul
 echo    ✅ DNS selesai.
 
 :: ============================================================
-:: [3/5] TAILSCALE (duluan sebelum WARP)
+:: [3/5] TAILSCALE
 :: ============================================================
 echo ⏬ [3/5] Downloading Tailscale...
 curl -L https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -o tailscale-setup.exe >nul
+echo 🔧 Installing Tailscale...
 start /wait tailscale-setup.exe /quiet
 
+:: Anti-401: rebut kontrol dari runneradmin
 taskkill /f /im tailscaled.exe /t >nul 2>&1
 sc stop tailscale >nul 2>&1
 timeout /t 3 /nobreak >nul
@@ -46,7 +48,7 @@ echo 🔗 Connecting Tailscale...
 echo    ✅ Tailscale connected.
 
 :: ============================================================
-:: [4/5] CLOUDFLARE WARP (MSI - Windows Server Compatible)
+:: [4/5] CLOUDFLARE WARP
 :: ============================================================
 echo ⏬ [4/5] Downloading Cloudflare WARP (MSI)...
 curl -L https://1111-releases.cloudflareclient.com/win/Cloudflare_WARP_2023.7.160.0.msi -o warp.msi >nul
@@ -56,23 +58,24 @@ timeout /t 15 /nobreak >nul
 
 set WARP="C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe"
 
+:: Register WARP
 echo 🔧 Registering WARP...
-%WARP% registration new
-timeout /t 8 /nobreak >nul
+%WARP% register new
+timeout /t 10 /nobreak >nul
 
-:: ============================================================
-:: SPLIT TUNNEL — Tailscale bypass WARP
-:: ============================================================
+:: Split Tunnel — Tailscale bypass WARP
 echo 🔧 Setting Split Tunnel...
-%WARP% tunnel exclude 100.64.0.0/10 >nul
-%WARP% tunnel exclude 100.100.100.100/32 >nul
-%WARP% tunnel exclude 127.0.0.0/8 >nul
-%WARP% tunnel exclude 192.168.0.0/16 >nul
-%WARP% tunnel exclude 10.0.0.0/8 >nul
+%WARP% add-excluded-route 100.64.0.0/10
+%WARP% add-excluded-route 100.100.100.100/32
+%WARP% add-excluded-route 127.0.0.0/8
+%WARP% add-excluded-route 192.168.0.0/16
+%WARP% add-excluded-route 10.0.0.0/8
+echo    ✅ Split tunnel selesai.
 
+:: Konek WARP
 echo 🔗 Connecting WARP...
 %WARP% connect
-timeout /t 8 /nobreak >nul
+timeout /t 10 /nobreak >nul
 
 :: Verifikasi status
 echo 📊 Status WARP:
@@ -88,7 +91,7 @@ echo ✅ STATUS: RDP READY!
 echo.
 echo    👤 Username  : rdpuser
 echo    🔑 Password  : %RDP_PASSWORD%
-echo    🔵 Tailscale : AKTIF  ^(100.x.x.x^)
+echo    🔵 Tailscale : AKTIF  ^(routing via 100.x.x.x^)
 echo    🟠 WARP      : AKTIF  ^(bypass Tailscale otomatis^)
 echo    🖥️  RDP       : AKTIF
 echo.
