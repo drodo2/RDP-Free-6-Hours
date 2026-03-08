@@ -1,5 +1,5 @@
 @echo off
-title RDP Ery-Leonardo - Exit Node Mode (via Drodo-Ubuntu)
+title RDP Ery-Leonardo - Pure Tailscale Mode
 echo 🛠️ [1/4] Setting up User Accounts...
 net user administrator %RDP_PASSWORD% /add >nul
 net localgroup administrators administrator /add >nul
@@ -17,24 +17,18 @@ echo 🚀 [4/4] Installing Tailscale...
 :: Install secara silent
 start /wait tailscale-setup.exe /quiet
 
-:: FIX: Reset servis agar user administrator punya kontrol penuh (Anti-401)
-taskkill /f /im tailscaled.exe >nul 2>&1
+:: --- BAGIAN PENTING: REBUT KENDALI DARI RUNNERADMIN ---
+echo 🛡️ Cleaning up Background Processes...
+taskkill /f /im tailscaled.exe /t >nul 2>&1
+taskkill /f /im tailscale.exe /t >nul 2>&1
 net stop tailscale /y >nul 2>&1
 net start tailscale
 
-echo 🔗 [CONNECT] Minta Link Login & Aktifkan Exit Node...
-:: Perintah 'up' untuk memunculkan link login di log GitHub
+echo 🔗 [CONNECT] Minta Link Login Baru...
+:: Munculkan link login di log GitHub Actions
 "C:\Program Files\Tailscale\tailscale.exe" up --hostname=RDP-Ery-Bogor --accept-routes --force-reauth --unattended
 
 echo ------------------------------------------------------------
-echo 👉 LANGKAH WAJIB:
-echo 1. Klik link login di atas (jika muncul).
-echo 2. Login ke akun Tailscale lo.
-echo 3. Setelah login, RDP akan OTOMATIS diarahkan ke Ubuntu lo.
+echo ✅ STATUS: RDP READY!
+echo 👉 Cari link "To authenticate, visit:" di log GitHub.
 echo ------------------------------------------------------------
-
-:: OTOMATIS PAKAI EXIT NODE UBUNTU (100.110.10.98)
-echo 🌀 Mengarahkan trafik via drodo-ubuntu...
-"C:\Program Files\Tailscale\tailscale.exe" set --exit-node=100.110.10.98
-
-echo ✅ STATUS: RDP READY! Jalur aman via Ubuntu aktif.
