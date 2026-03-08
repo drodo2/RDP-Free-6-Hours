@@ -10,7 +10,6 @@ echo ==========================================
 echo    RDP TAILSCALE STATUS: ACTIVE
 echo ==========================================
 
-:: Cek Tailscale
 tasklist | find /i "tailscaled.exe" >nul
 if %errorlevel% equ 0 (
     echo [OK] Tailscale Service Active.
@@ -24,20 +23,18 @@ if %errorlevel% equ 0 (
 
 echo ------------------------------------------
 
-:: Cek sing-box
 tasklist | find /i "sing-box.exe" >nul
 if %errorlevel% equ 0 (
     echo [OK] sing-box VPN Active.
 ) else (
     echo [WARN] sing-box mati, restart...
-    schtasks /run /tn "singbox" >nul 2>&1
+    powershell -Command "Start-ScheduledTask -TaskName 'singbox'"
 )
 
 echo ------------------------------------------
-echo Session will stay alive. Loop setiap 5 menit.
-echo To stop, cancel the GitHub Workflow.
+echo Session akan tetap hidup. Loop setiap 5 menit.
+echo Untuk stop, cancel GitHub Workflow.
 echo ------------------------------------------
 
-:: Tunggu 5 menit
 timeout /t 300 /nobreak >nul
 goto check
