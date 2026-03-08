@@ -12,10 +12,18 @@ $config = @{
     log = @{ level = "warn" }
     inbounds = @(
         @{
-            type = "mixed"
-            tag = "mixed-in"
-            listen = "127.0.0.1"
-            listen_port = 2080
+            type = "tun"
+            tag = "tun-in"
+            inet4_address = "172.19.0.1/30"
+            auto_route = $true
+            strict_route = $false
+            stack = "system"
+            exclude_interface = @("Tailscale")
+            route_exclude_address = @(
+                "100.64.0.0/10",
+                "100.100.100.100/32",
+                "41.0.0.0/8"
+            )
         }
     )
     outbounds = @(
@@ -44,6 +52,18 @@ $config = @{
         @{ type = "direct"; tag = "direct" }
     )
     route = @{
+        rules = @(
+            @{
+                ip_cidr = @(
+                    "100.64.0.0/10",
+                    "100.100.100.100/32",
+                    "192.168.0.0/16",
+                    "10.0.0.0/8",
+                    "127.0.0.0/8"
+                )
+                outbound = "direct"
+            }
+        )
         final = "proxy"
     }
 } | ConvertTo-Json -Depth 10
@@ -63,13 +83,17 @@ Start-Sleep -Seconds 8
 $proc = Get-Process -Name "sing-box" -ErrorAction SilentlyContinue
 if ($proc) {
     Write-Host "[sing-box 3/3] RUNNING OK (PID: $($proc.Id))"
-
-    Write-Host "[sing-box +] Setting system proxy 127.0.0.1:2080..."
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name ProxyEnable -Value 1
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name ProxyServer -Value "127.0.0.1:2080"
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name ProxyOverride -Value "100.*;10.*;192.168.*;127.*;localhost;<local>"
-    Write-Host "[sing-box +] System proxy OK"
 } else {
     Write-Host "[sing-box 3/3] ERROR: gagal start, output:"
     & "$exePath" run -c "$cfgPath" 2>&1 | Select-Object -First 30
 }
+```
+
+---
+
+### Cara Kerjanya
+```
+rgsstore app  → rgsstoregamming.com → TUN → Trojan ✅
+Browser       → semua website       → TUN → Trojan ✅
+Tailscale     → interface excluded  → langsung    ✅
+LAN/loopback  → ip excluded         → langsung    ✅
