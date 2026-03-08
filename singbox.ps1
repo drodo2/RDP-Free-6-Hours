@@ -7,36 +7,17 @@ Expand-Archive -Path "sing-box.zip" -DestinationPath "sing-box-extracted" -Force
 Copy-Item "sing-box-extracted\sing-box-1.8.0-windows-amd64\sing-box.exe" ".\sing-box.exe" -Force
 Write-Host "[sing-box 1/3] Downloaded OK"
 
-Write-Host "[sing-box 2/3] Detecting Tailscale interface..."
-$tsInterface = Get-NetAdapter | Where-Object {
-    $_.Description -match "tailscale|tsun|wintun" -or
-    $_.Name -match "tailscale|tsun"
-} | Select-Object -First 1 -ExpandProperty Name
-
-if ($tsInterface) {
-    Write-Host "[sing-box 2/3] Tailscale interface: $tsInterface"
-} else {
-    Write-Host "[sing-box 2/3] WARNING: interface tidak ditemukan, pakai IP rules saja"
-}
-
 Write-Host "[sing-box 2/3] Writing config.json..."
-
-$inbound = [ordered]@{
-    type = "tun"
-    tag = "tun-in"
-    inet4_address = "172.19.0.1/30"
-    auto_route = $true
-    strict_route = $false
-    stack = "system"
-}
-
-if ($tsInterface) {
-    $inbound["exclude_interface"] = @($tsInterface)
-}
-
 $config = [ordered]@{
     log = [ordered]@{ level = "warn" }
-    inbounds = @($inbound)
+    inbounds = @(
+        [ordered]@{
+            type = "mixed"
+            tag = "mixed-in"
+            listen = "127.0.0.1"
+            listen_port = 2080
+        }
+    )
     outbounds = @(
         [ordered]@{
             type = "trojan"
@@ -65,18 +46,6 @@ $config = [ordered]@{
         [ordered]@{ type = "direct"; tag = "direct" }
     )
     route = [ordered]@{
-        rules = @(
-            [ordered]@{
-                ip_cidr = @(
-                    "100.64.0.0/10",
-                    "100.100.100.100/32",
-                    "192.168.0.0/16",
-                    "10.0.0.0/8",
-                    "127.0.0.0/8"
-                )
-                outbound = "direct"
-            }
-        )
         final = "proxy"
     }
 } | ConvertTo-Json -Depth 10
@@ -84,7 +53,7 @@ $config = [ordered]@{
 [System.IO.File]::WriteAllText("$WorkDir\config.json", $config, [System.Text.UTF8Encoding]::new($false))
 Write-Host "[sing-box 2/3] config.json OK"
 
-Write-Host "[sing-box 3/3] Starting via Task Scheduler..."
+Write-Host "[sing-box 3/3] Starting sing-box..."
 $exePath = "$WorkDir\sing-box.exe"
 $cfgPath = "$WorkDir\config.json"
 
@@ -99,4 +68,76 @@ if ($proc) {
 } else {
     Write-Host "[sing-box 3/3] ERROR: gagal start, output:"
     & "$exePath" run -c "$cfgPath" 2>&1 | Select-Object -First 30
+    exit 1
+}
+
+Write-Host "[Proxifier 1/2] Downloading Proxifier..."
+Invoke-WebRequest -Uri "https://www.proxifier.com/download/ProxifierSetup.exe" -OutFile "ProxifierSetup.exe"
+Start-Process -FilePath "ProxifierSetup.exe" -ArgumentList "/VERYSILENT","/NORESTART" -Wait
+Start-Sleep -Seconds 10
+Write-Host "[Proxifier 1/2] Installed OK"
+
+Write-Host "[Proxifier 2/2] Writing Proxifier config..."
+$proxifierConfig = @'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxifierProfile version="101" platform="Win" product_id="1">
+  <ProxyList>
+    <Proxy id="1" type="SOCKS5">
+      <Address>127.0.0.1</Address>
+      <Port>2080</Port>
+    </Proxy>
+  </ProxyList>
+  <RuleList>
+    <Rule>
+      <n>Tailscale Direct</n>
+      <Applications>tailscaled.exe;tailscale.exe</Applications>
+      <Action type="Direct"/>
+    </Rule>
+    <Rule>
+      <n>RDP Direct</n>
+      <Applications>rdpclip.exe;svchost.exe;mstsc.exe</Applications>
+      <Action type="Direct"/>
+    </Rule>
+    <Rule>
+      <n>RGSStore via Proxy</n>
+      <Applications>RGSStorePro.exe</Applications>
+      <Targets>rgsstoregamming.com;*.rgsstoregamming.com</Targets>
+      <Action type="Proxy" id="1"/>
+    </Rule>
+    <Rule>
+      <n>Default Direct</n>
+      <Action type="Direct"/>
+    </Rule>
+  </RuleList>
+</ProxifierProfile>
+'@
+
+$proxifierConfigPath = "$WorkDir\proxifier.ppx"
+[System.IO.File]::WriteAllText($proxifierConfigPath, $proxifierConfig, [System.Text.UTF8Encoding]::new($false))
+
+$proxifierExe = "C:\Program Files\Proxifier\Proxifier.exe"
+if (Test-Path $proxifierExe) {
+    Start-Process -FilePath $proxifierExe -ArgumentList "`"$proxifierConfigPath`"" -WindowStyle Hidden
+    Start-Sleep -Seconds 5
+    Write-Host "[Proxifier 2/2] RUNNING OK"
+} else {
+    Write-Host "[Proxifier 2/2] ERROR: Proxifier tidak ditemukan"
+}
+
+Write-Host "[RGSStore 1/2] Downloading RGSStorePro..."
+$rgsUrl = "https://dl.rgsstoregamming.com/RGSSTORE%20APP/RGSStorePro_with_net.exe"
+$rgsPath = "$WorkDir\RGSStorePro_setup.exe"
+Invoke-WebRequest -Uri $rgsUrl -OutFile $rgsPath
+Write-Host "[RGSStore 1/2] Downloaded OK"
+
+Write-Host "[RGSStore 2/2] Installing RGSStorePro..."
+Start-Process -FilePath $rgsPath -ArgumentList "/VERYSILENT","/NORESTART" -Wait
+Start-Sleep -Seconds 10
+
+$rgsExe = Get-ChildItem "C:\Program Files*\*RGS*\*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($rgsExe) {
+    Write-Host "[RGSStore 2/2] Installed OK: $($rgsExe.FullName)"
+} else {
+    Write-Host "[RGSStore 2/2] WARNING: exe tidak ditemukan, mungkin install di lokasi lain"
+    Write-Host "[RGSStore 2/2] Coba jalankan manual dari Desktop atau Start Menu"
 }
